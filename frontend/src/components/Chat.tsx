@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatMessage } from '@/types';
-import { chat } from '../lib/api';
+import { chat } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import { useAppContext } from '@/contexts/AppContext';
