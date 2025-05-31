@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+build/
+dist/
+*.egg-info/
+.DS_Store
+
+# If you have specific large data files or test assets not needed in production
+# data/
+# tests/
+
+# Documentation files
+README.md 
