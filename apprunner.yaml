@@ -1,0 +1,17 @@
+version: 1.0
+runtime: docker
+build:
+  commands:
+    build:
+      - echo "Building with Docker"
+run:
+  runtime-version: latest
+  command: python app.py
+  network:
+    port: 8000
+    env: PORT
+  env:
+    - name: PORT
+      value: "8000"
+    - name: OPENAI_API_KEY
+      value: ""  # Set this in App Runner console 
