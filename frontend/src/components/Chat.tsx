@@ -87,9 +87,13 @@ export default function Chat() {
           ));
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      let message = 'Sorry, an unexpected error occurred. Please try again.';
+      if (error instanceof Error) {
+        message = error.message;
+      }
       setChatMessages((prevMessages: ChatMessage[]) => prevMessages.map((msg: ChatMessage, index: number) => 
-        index === prevMessages.length - 1 ? { ...msg, content: 'Sorry, an unexpected error occurred. Please try again.' } : msg
+        index === prevMessages.length - 1 ? { ...msg, content: message } : msg
       ));
     } finally {
       setIsChatLoading(false);

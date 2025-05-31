@@ -1,4 +1,5 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ApiResponse, ChatRequest, QueryRequest, QueryResult, UploadResponse, ApiQueryResponse } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -42,8 +43,8 @@ export const uploadFile = async (file: File): Promise<ApiResponse<UploadResponse
     return { data: response.data };
   } catch (error: unknown) {
     let message = 'Failed to upload file';
-    if (error instanceof Error && (error as any).response?.data?.detail) {
-      message = (error as any).response.data.detail;
+    if (axios.isAxiosError(error)) {
+      message = error.response?.data?.detail || error.message || message;
     } else if (error instanceof Error) {
       message = error.message;
     }
@@ -57,8 +58,8 @@ export const queryDocuments = async (request: QueryRequest): Promise<ApiResponse
     return { data: response.data };
   } catch (error: unknown) {
     let message = 'Failed to query documents';
-    if (error instanceof Error && (error as any).response?.data?.detail) {
-      message = (error as any).response.data.detail;
+    if (axios.isAxiosError(error)) {
+      message = error.response?.data?.detail || error.message || message;
     } else if (error instanceof Error) {
       message = error.message;
     }
@@ -88,7 +89,7 @@ export const chat = async (request: ChatRequest): Promise<ApiResponse<ReadableSt
       try {
         const errorData = await response.json();
         errorDetail = errorData.detail || errorDetail;
-      } catch (_e) {
+      } catch (_e: unknown) {
         // Ignore if response is not JSON or already consumed
       }
       return { error: `HTTP error ${response.status}: ${errorDetail}` };
@@ -129,7 +130,7 @@ export const deleteDocuments = async (): Promise<ApiResponse<{ detail: string }>
       try {
         const errorData = await response.json();
         errorDetail = errorData.detail || errorDetail;
-      } catch (_e) {
+      } catch (_e: unknown) {
         // Ignore if response is not JSON or already consumed
       }
       return { error: `HTTP error ${response.status}: ${errorDetail}` };
@@ -151,7 +152,7 @@ export const checkHealth = async (): Promise<ApiResponse<{ status: string }>> =>
   try {
     const response = await api.get<{ status: string }>('/api/health');
     return { data: response.data };
-  } catch (_error: unknown) { // error variable is not used, and typed as unknown
+  } catch {
     return { error: 'Service is unhealthy' };
   }
 }; 

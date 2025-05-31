@@ -47,7 +47,7 @@ export default function FileUpload() {
         setUploadedFileName(response.data.filename);
         setUploadError(null);
       }
-    } catch (_err) { // err variable is not used
+    } catch (_err: unknown) { // err variable is not used, explicitly typed
       setUploadError('Failed to upload file');
       setUploadedFileName(null);
     } finally {

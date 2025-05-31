@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Tab } from '@headlessui/react';
 import FileUpload from '@/components/FileUpload';
 import Chat from '@/components/Chat';
@@ -174,7 +174,7 @@ export default function Home() {
       try {
         const response = await checkHealth();
         setIsHealthy(response.data?.status === 'ok');
-      } catch (error) {
+      } catch (_error) {
         setIsHealthy(false);
       }
     };
@@ -195,7 +195,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900">The Busy Banker's Wingman</h1>
+              <h1 className="text-3xl font-bold text-gray-900">The Busy Banker&apos;s Wingman</h1>
               <div className="flex items-center space-x-4">
                 <form onSubmit={handleApiKeySubmit} className="flex items-center space-x-2">
                   <input
