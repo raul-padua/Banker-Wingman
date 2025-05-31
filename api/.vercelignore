@@ -13,12 +13,40 @@ dist/
 
 # Log files
 app.log
+*.log
 
 # Local data (contents will be ignored, directory can be created by app at runtime if needed)
 data/**
 
 # Test files if any
 # tests/
+test/
+tests/
+*_test.py
+test_*.py
 
 # Documentation files
-README.md 
+README.md
+*.md
+docs/
+
+# Development files
+.git/
+.gitignore
+.env
+.env.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Cache directories
+.pytest_cache/
+.mypy_cache/
+.cache/ 

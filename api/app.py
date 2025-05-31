@@ -178,7 +178,8 @@ async def upload_file(
         documents = document_processor.process_file(file_path)
         chunks = document_processor.split_documents(documents)
 
-        # Add to vector store
+        # Add to vector store - Clear any existing documents first for SimpleVectorStore
+        current_vector_store.delete_collection()
         current_vector_store.add_documents(chunks)
 
         return {
@@ -246,27 +247,22 @@ async def chat(
         retrieved_docs = []
         context_for_prompt = "No context from uploaded documents was available or retrieved."
 
-        if current_vector_store and current_vector_store.qdrant_client and current_vector_store.collection_name: # type: ignore
-            collection_exists = current_vector_store.qdrant_client.collection_exists(collection_name=current_vector_store.collection_name) # type: ignore
-            if collection_exists:
-                try:
-                    retrieved_docs = current_vector_store.search(query=chat_request.user_message, limit=3)
-                    logger.info(f"Retrieved {len(retrieved_docs)} documents for chat context.")
-                    if retrieved_docs:
-                        context_for_prompt = "Relevant context from uploaded documents:\n\n"
-                        for doc in retrieved_docs:
-                            context_for_prompt += f"- Source: {doc.get('metadata', {}).get('file_name', 'N/A')}, Page: {doc.get('metadata', {}).get('page_label', 'N/A')}\n"
-                            context_for_prompt += f"  Content: {doc.get('text', '')}\n\n"
-                    else:
-                        context_for_prompt = "No relevant documents found for the query."
-                except Exception as e:
-                    logger.error(f"Error during document search for chat: {e}", exc_info=True)
-                    context_for_prompt = "Error retrieving documents for context."
-            else:
-                logger.info(f"Collection '{current_vector_store.collection_name}' does not exist. Skipping RAG for chat.")
-                context_for_prompt = "No document collection found. Please upload a document first."
+        if current_vector_store:
+            try:
+                retrieved_docs = current_vector_store.search(query=chat_request.user_message, limit=3)
+                logger.info(f"Retrieved {len(retrieved_docs)} documents for chat context.")
+                if retrieved_docs:
+                    context_for_prompt = "Relevant context from uploaded documents:\n\n"
+                    for doc in retrieved_docs:
+                        context_for_prompt += f"- Source: {doc.get('metadata', {}).get('file_name', 'N/A')}, Page: {doc.get('metadata', {}).get('page_label', 'N/A')}\n"
+                        context_for_prompt += f"  Content: {doc.get('text', '')}\n\n"
+                else:
+                    context_for_prompt = "No relevant documents found for the query."
+            except Exception as e:
+                logger.error(f"Error during document search for chat: {e}", exc_info=True)
+                context_for_prompt = "Error retrieving documents for context."
         else:
-            logger.warning("Vector store not available or collection name not set. Skipping RAG for chat.")
+            logger.warning("Vector store not available. Skipping RAG for chat.")
             context_for_prompt = "Vector store not initialized. Cannot perform RAG."
 
         # Updated system prompt for "Busy Banker's Wingman" and CoT
@@ -353,7 +349,7 @@ async def chat(
 @app.get("/api/health")
 async def health_check_reverted():
     redis_ping_ok = False
-    qdrant_collection_exists = False
+    vector_store_active = False
     global redis_client, vector_store
 
     try:
@@ -363,17 +359,12 @@ async def health_check_reverted():
     except Exception:
         logger.warning("Health check: Redis ping failed.")
 
-    # For Qdrant, check if vector_store object exists and if the collection exists
-    # This doesn't require an API key to check if the collection itself is there once qdrant client is up
-    # However, vector_store object itself might be None if no API key has been used yet.
+    # Check if vector_store object exists
     try:
-        if vector_store and vector_store.qdrant_client.collection_exists(collection_name=vector_store.collection_name):
-             qdrant_collection_exists = True
-        elif vector_store: # vector_store object exists but collection doesn't
-            qdrant_collection_exists = False
-        # if vector_store is None, qdrant_collection_exists remains False
+        if vector_store:
+            vector_store_active = True
     except Exception as e:
-        logger.warning(f"Health check: Qdrant check failed: {e}")
+        logger.warning(f"Health check: Vector store check failed: {e}")
 
     return {
         "status": "ok",
@@ -381,7 +372,7 @@ async def health_check_reverted():
         "services": {
             "redis": "connected" if redis_ping_ok else "disconnected/error",
             "openai": "ready", # This is a general assumption
-            "qdrant_collection": "exists" if qdrant_collection_exists else ("not_found_or_vs_uninitialized")
+            "vector_store": "active" if vector_store_active else "not_initialized"
         }
     }
 
@@ -394,9 +385,9 @@ async def delete_all_documents(
     current_vector_store: VectorStoreManager = Depends(get_vector_store),
     current_redis_client: Optional[AsyncRedis] = Depends(get_redis_client)
 ):
-    """Delete the current Qdrant collection and clear relevant Redis cache."""
+    """Delete the current vector store contents and clear relevant Redis cache."""
     try:
-        # Delete Qdrant collection
+        # Clear vector store
         # The get_vector_store dependency already ensures vector_store is initialized if API key is valid
         # We use current_vector_store passed by Depends
         if not current_vector_store:
@@ -408,9 +399,8 @@ async def delete_all_documents(
 
         deleted = current_vector_store.delete_collection()
         if not deleted:
-            # Handle cases where deletion might not have occurred as expected (e.g., collection didn't exist)
-            # Depending on desired behavior, this might not be a client error
-            logger.warning(f"Collection '{current_vector_store.collection_name}' might not have been deleted (e.g., did not exist).")
+            # Handle cases where deletion might not have occurred as expected
+            logger.warning("Vector store might not have been cleared as expected.")
             # Still proceed to clear cache and frontend state if desired
 
         # Clear Redis cache (example: keys prefixed with "chat_rag:")
