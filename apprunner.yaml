@@ -1,12 +1,11 @@
 version: 1.0
-runtime: python3.11
+runtime: docker
 build:
   commands:
     build:
-      - pip install -r api/requirements.txt
+      - echo "Using Dockerfile for build"
 run:
-  runtime-version: 3.11
-  command: python api/app.py
+  runtime-version: latest
   network:
     port: 8000
   env:
