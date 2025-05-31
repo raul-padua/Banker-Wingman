@@ -174,7 +174,7 @@ export default function Home() {
       try {
         const response = await checkHealth();
         setIsHealthy(response.data?.status === 'ok');
-      } catch (_error) {
+      } catch {
         setIsHealthy(false);
       }
     };

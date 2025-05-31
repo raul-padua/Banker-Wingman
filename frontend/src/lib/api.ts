@@ -1,4 +1,4 @@
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ApiResponse, ChatRequest, QueryRequest, QueryResult, UploadResponse, ApiQueryResponse } from '@/types';
 
@@ -89,7 +89,7 @@ export const chat = async (request: ChatRequest): Promise<ApiResponse<ReadableSt
       try {
         const errorData = await response.json();
         errorDetail = errorData.detail || errorDetail;
-      } catch (_e: unknown) {
+      } catch {
         // Ignore if response is not JSON or already consumed
       }
       return { error: `HTTP error ${response.status}: ${errorDetail}` };
@@ -130,7 +130,7 @@ export const deleteDocuments = async (): Promise<ApiResponse<{ detail: string }>
       try {
         const errorData = await response.json();
         errorDetail = errorData.detail || errorDetail;
-      } catch (_e: unknown) {
+      } catch {
         // Ignore if response is not JSON or already consumed
       }
       return { error: `HTTP error ${response.status}: ${errorDetail}` };
