@@ -1,15 +1,14 @@
 version: 1.0
-runtime: docker
+runtime: python3.11
 build:
   commands:
     build:
-      - echo "Building with Docker"
+      - pip install -r api/requirements.txt
 run:
-  runtime-version: latest
-  command: python app.py
+  runtime-version: 3.11
+  command: python api/app.py
   network:
     port: 8000
-    env: PORT
   env:
     - name: PORT
       value: "8000"
