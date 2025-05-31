@@ -7,11 +7,6 @@
         "use": "@vercel/python"
       }
     ],
-    "functions": {
-      "api/app.py": {
-        "excludeFiles": "{api/app.log,api/data/**,api/README.md}"
-      }
-    },
     "routes": [
       { 
         "src": "/api/(.*)", 

@@ -11,8 +11,13 @@ dist/
 *.egg-info/
 .DS_Store
 
-# If you have specific large data files or test assets not needed in production
-# data/
+# Log files
+app.log
+
+# Local data (contents will be ignored, directory can be created by app at runtime if needed)
+data/**
+
+# Test files if any
 # tests/
 
 # Documentation files
