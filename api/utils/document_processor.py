@@ -4,9 +4,9 @@ import logging
 from llama_index.readers.file import PDFReader
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import Document, NodeWithScore
-import magic
-from PIL import Image
-import io
+# import magic # Removed
+# from PIL import Image # Removed
+# import io # Seems unused, removing
 
 logger = logging.getLogger(__name__)
 
@@ -23,13 +23,19 @@ class DocumentProcessor:
     def process_file(self, file_path: Path) -> List[Document]:
         """Process a file and return a list of documents."""
         try:
-            mime = magic.Magic(mime=True)
-            file_type = mime.from_file(str(file_path))
+            # mime = magic.Magic(mime=True) # Removed
+            # file_type = mime.from_file(str(file_path)) # Removed
+            file_extension = file_path.suffix.lower()
 
-            if file_type == 'application/pdf':
+            if file_extension == '.pdf':
                 return self._process_pdf(file_path)
+            # You can add support for other file types here based on extension
+            # elif file_extension == '.txt':
+            #     return self._process_txt(file_path) # Example
             else:
-                raise ValueError(f"Unsupported file type: {file_type}")
+                # Fallback or raise error for unsupported types
+                logger.warning(f"Unsupported file extension: {file_extension}. Only .pdf is currently supported.")
+                raise ValueError(f"Unsupported file extension: {file_extension}. Only .pdf is currently supported.")
 
         except Exception as e:
             logger.error(f"Error processing file {file_path}: {str(e)}", exc_info=True)
