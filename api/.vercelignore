@@ -21,4 +21,7 @@ data/**
 # tests/
 
 # Documentation files
-README.md 
+README.md
+
+# Explicitly ignore frontend directory when building API (temporary test)
+../frontend/ 
