@@ -6,6 +6,6 @@ build:
       - python3 -m pip install -r api/requirements.txt
 run:
   runtime-version: 3.11
-  command: cd /app && python3 -c "import sys; sys.path.insert(0, '.'); import uvicorn; uvicorn.run('api.app:app', host='0.0.0.0', port=8000)"
+  command: cd /app && PYTHONPATH=/app python3 -m uvicorn api.app:app --host 0.0.0.0 --port 8000
   network:
     port: 8000 
