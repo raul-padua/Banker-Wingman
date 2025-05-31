@@ -6,11 +6,9 @@ build:
       - python3 -m pip install -r api/requirements.txt
 run:
   runtime-version: 3.11
-  command: python3 -c "import sys; sys.path.insert(0, '/app'); sys.path.insert(0, '/app/api'); import uvicorn; uvicorn.run('app:app', host='0.0.0.0', port=8000)"
+  command: sh -c "cd /app/api && python3 -m uvicorn app:app --host 0.0.0.0 --port 8000"
   network:
     port: 8000
   env:
     - name: OPENAI_API_KEY
-      value: "your-default-api-key"
-    - name: PYTHONPATH
-      value: "/app:/app/api" 
+      value: "your-default-api-key" 
