@@ -8,6 +8,7 @@ from pydantic import BaseModel
 # Import OpenAI client for interacting with OpenAI's API
 from openai import OpenAI
 import os
+import sys
 from typing import Optional, List
 import time
 import logging
@@ -18,9 +19,14 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
 from fastapi import status
 
+# Add the current directory to Python path for imports
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
 # Import custom utilities
-from .utils.document_processor import DocumentProcessor
-from .utils.vector_store import VectorStoreManager
+from utils.document_processor import DocumentProcessor
+from utils.vector_store import VectorStoreManager
 
 # Configure logging
 logging.basicConfig(
