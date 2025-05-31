@@ -40,8 +40,14 @@ export const uploadFile = async (file: File): Promise<ApiResponse<UploadResponse
     );
 
     return { data: response.data };
-  } catch (error: any) {
-    return { error: error?.response?.data?.detail || 'Failed to upload file' };
+  } catch (error: unknown) {
+    let message = 'Failed to upload file';
+    if (error instanceof Error && (error as any).response?.data?.detail) {
+      message = (error as any).response.data.detail;
+    } else if (error instanceof Error) {
+      message = error.message;
+    }
+    return { error: message };
   }
 };
 
@@ -49,8 +55,14 @@ export const queryDocuments = async (request: QueryRequest): Promise<ApiResponse
   try {
     const response = await api.post<ApiQueryResponse>('/api/query', request);
     return { data: response.data };
-  } catch (error: any) {
-    return { error: error?.response?.data?.detail || 'Failed to query documents' };
+  } catch (error: unknown) {
+    let message = 'Failed to query documents';
+    if (error instanceof Error && (error as any).response?.data?.detail) {
+      message = (error as any).response.data.detail;
+    } else if (error instanceof Error) {
+      message = error.message;
+    }
+    return { error: message };
   }
 };
 
@@ -76,7 +88,7 @@ export const chat = async (request: ChatRequest): Promise<ApiResponse<ReadableSt
       try {
         const errorData = await response.json();
         errorDetail = errorData.detail || errorDetail;
-      } catch (e) {
+      } catch (_e) {
         // Ignore if response is not JSON or already consumed
       }
       return { error: `HTTP error ${response.status}: ${errorDetail}` };
@@ -88,12 +100,16 @@ export const chat = async (request: ChatRequest): Promise<ApiResponse<ReadableSt
     
     return { data: response.body }; // response.body from fetch IS a ReadableStream
 
-  } catch (error: any) {
-    return { error: error.message || 'Failed to send chat message' };
+  } catch (error: unknown) {
+    let message = 'Failed to send chat message';
+    if (error instanceof Error) {
+        message = error.message;
+    }
+    return { error: message };
   }
 };
 
-export const deleteDocuments = async (): Promise<ApiResponse<any>> => {
+export const deleteDocuments = async (): Promise<ApiResponse<{ detail: string }>> => {
   try {
     const apiKey = localStorage.getItem('apiKey');
     const headers: HeadersInit = {
@@ -113,7 +129,7 @@ export const deleteDocuments = async (): Promise<ApiResponse<any>> => {
       try {
         const errorData = await response.json();
         errorDetail = errorData.detail || errorDetail;
-      } catch (e) {
+      } catch (_e) {
         // Ignore if response is not JSON or already consumed
       }
       return { error: `HTTP error ${response.status}: ${errorDetail}` };
@@ -122,8 +138,12 @@ export const deleteDocuments = async (): Promise<ApiResponse<any>> => {
     const responseData = await response.json(); 
     return { data: responseData }; 
 
-  } catch (error: any) {
-    return { error: error?.message || 'An unexpected error occurred while deleting documents' };
+  } catch (error: unknown) {
+    let message = 'An unexpected error occurred while deleting documents';
+    if (error instanceof Error) {
+        message = error.message;
+    } 
+    return { error: message };
   }
 };
 
@@ -131,7 +151,7 @@ export const checkHealth = async (): Promise<ApiResponse<{ status: string }>> =>
   try {
     const response = await api.get<{ status: string }>('/api/health');
     return { data: response.data };
-  } catch (error) {
+  } catch (_error: unknown) { // error variable is not used, and typed as unknown
     return { error: 'Service is unhealthy' };
   }
 }; 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { QueryResult } from '@/types';
+// import { QueryResult } from '@/types'; // Unused import
 import { queryDocuments } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 import { useAppContext } from '@/contexts/AppContext';
@@ -61,8 +61,12 @@ export default function Query() {
         setLastQuery(currentQueryInput.trim());
         setQueryError(null);
       }
-    } catch (err: any) {
-      setQueryError(err.message || 'Failed to query documents');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setQueryError(err.message || 'Failed to query documents');
+      } else {
+        setQueryError('An unknown error occurred while querying documents');
+      }
       setQueryResults([]);
     } finally {
       setIsQueryLoading(false);

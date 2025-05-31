@@ -64,8 +64,12 @@ function PageContent() {
         setQueryError(null);
         setChatMessages([]);
       }
-    } catch (err: any) {
-      setDeleteError(err.message || 'Failed to delete document');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setDeleteError(err.message || 'Failed to delete document');
+      } else {
+        setDeleteError('An unknown error occurred while deleting the document');
+      }
     } finally {
       setIsDeleting(false);
     }

@@ -6,7 +6,8 @@ import { useAppContext } from '@/contexts/AppContext';
 
 export default function FileUpload() {
   const {
-    uploadedFileName,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    uploadedFileName, // This is read by PageContent, ESLint can't see that
     setUploadedFileName,
     isUploading,
     setIsUploading,
@@ -46,7 +47,7 @@ export default function FileUpload() {
         setUploadedFileName(response.data.filename);
         setUploadError(null);
       }
-    } catch (err) {
+    } catch (_err) { // err variable is not used
       setUploadError('Failed to upload file');
       setUploadedFileName(null);
     } finally {
