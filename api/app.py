@@ -12,18 +12,10 @@ from typing import Optional, List
 import time
 import logging
 from datetime import datetime
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-import redis
-from functools import lru_cache
 from pathlib import Path
 import shutil
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request as StarletteRequest
-from redis.asyncio import Redis as AsyncRedis
 from fastapi import status
 
 # Import custom utilities
@@ -44,14 +36,8 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI application with a title
 app = FastAPI(title="OpenAI Chat API")
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-
 # --- Global variable definitions ---
 vector_store: Optional[VectorStoreManager] = None
-redis_client: Optional[AsyncRedis] = None
 # Initialize document processor EARLY - before routes that use it
 document_processor = DocumentProcessor(chunk_size=1024, chunk_overlap=0.25)
 # --- End Global variable definitions ---
@@ -129,9 +115,6 @@ class LimitUploadSizeMiddleware(BaseHTTPMiddleware):
 app.add_middleware(LimitUploadSizeMiddleware, max_upload_size=100 * 1024 * 1024)
 
 # --- Dependency function DEFINITIONS must come BEFORE their use in route decorators ---
-async def get_redis_client() -> Optional[AsyncRedis]:
-    return redis_client
-
 async def get_vector_store(api_key: str = Depends(get_api_key)) -> VectorStoreManager:
     """Dependency to get the initialized VectorStoreManager instance."""
     global vector_store
@@ -146,18 +129,11 @@ async def get_vector_store(api_key: str = Depends(get_api_key)) -> VectorStoreMa
 
 @app.on_event("startup")
 async def startup_event():
-    global redis_client
-    redis_client = AsyncRedis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379"))
-    try:
-        await redis_client.ping() # type: ignore
-        logger.info("Successfully connected to Redis.")
-    except Exception as e:
-        logger.error(f"Could not connect to Redis: {e}")
-        redis_client = None
+    global vector_store
+    vector_store = VectorStoreManager(openai_api_key=os.getenv("OPENAI_API_KEY", "your-default-api-key"))
 
 # File upload endpoint
 @app.post("/api/upload")
-@limiter.limit("5/minute")
 async def upload_file(
     request: Request,
     file: UploadFile = File(...),
@@ -194,7 +170,6 @@ async def upload_file(
 
 # Query endpoint
 @app.post("/api/query")
-@limiter.limit("10/minute")
 async def query_documents(
     request: Request,
     query_request: QueryRequest,
@@ -236,7 +211,6 @@ async def query_documents(
 
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
-@limiter.limit("10/minute")  # Rate limit: 10 requests per minute
 async def chat(
     request: Request,
     chat_request: ChatRequest,
@@ -277,36 +251,6 @@ async def chat(
 
         final_system_prompt = f"{base_system_prompt}\n\n{context_for_prompt}"
         
-        # Construct the cache key including the RAG context, user message, and model
-        # Hashing the potentially long context and message to keep key length manageable.
-        # Adding CoT to the prefix to differentiate from previous cache entries.
-        cache_key_string = f"chat_rag_CoT:{final_system_prompt}:{chat_request.user_message}:{chat_request.model}"
-        
-        # Using a basic sum of ordinals as a simple hash function.
-        # Consider a more robust hashing algorithm like SHA256 from hashlib if collisions become an issue
-        # and if standard library imports are permissible in the execution environment.
-        # For now, this simple hash should suffice for most cases.
-        cache_key_hash = sum(ord(c) for c in cache_key_string)
-        cache_key = f"chat_rag_CoT:{cache_key_hash}"
-
-
-        current_redis_client = await get_redis_client()
-        if current_redis_client:
-            try:
-                cached_response_bytes = await current_redis_client.get(cache_key)
-                if cached_response_bytes:
-                    logger.info(f"Cache hit for RAG CoT chat key: {cache_key}")
-                    cached_response_str = cached_response_bytes.decode('utf-8')
-                    async def cached_stream_generate():
-                        yield cached_response_str
-                    return StreamingResponse(cached_stream_generate(), media_type="text/event-stream")
-                else:
-                    logger.info(f"Cache miss for RAG CoT chat key: {cache_key}")
-            except Exception as e:
-                logger.error(f"Redis GET error: {e}", exc_info=True)
-        else:
-            logger.warning("Redis client not available, skipping cache lookup.")
-
         logger.info(f"Sending to OpenAI for chat. System prompt (truncated): {final_system_prompt[:500]}... User message: {chat_request.user_message}")
 
         client = OpenAI(api_key=api_key)
@@ -328,13 +272,6 @@ async def chat(
                         accumulated_response += content
                         yield content
                 
-                if current_redis_client and accumulated_response:
-                    try:
-                        await current_redis_client.set(cache_key, accumulated_response.encode('utf-8'), ex=3600) # Cache for 1 hour
-                        logger.info(f"Cached RAG CoT response for key: {cache_key}")
-                    except Exception as e:
-                        logger.error(f"Redis SET error for key {cache_key}: {e}", exc_info=True)
-
             except Exception as e:
                 logger.error(f"OpenAI API call failed: {str(e)}", exc_info=True)
                 yield "Sorry, I encountered an error processing your request with the AI model."
@@ -348,18 +285,9 @@ async def chat(
 # Health check endpoint
 @app.get("/api/health")
 async def health_check_reverted():
-    redis_ping_ok = False
     vector_store_active = False
-    global redis_client, vector_store
+    global vector_store
 
-    try:
-        if redis_client:
-            await redis_client.ping() # type: ignore
-            redis_ping_ok = True
-    except Exception:
-        logger.warning("Health check: Redis ping failed.")
-
-    # Check if vector_store object exists
     try:
         if vector_store:
             vector_store_active = True
@@ -370,7 +298,6 @@ async def health_check_reverted():
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
         "services": {
-            "redis": "connected" if redis_ping_ok else "disconnected/error",
             "openai": "ready", # This is a general assumption
             "vector_store": "active" if vector_store_active else "not_initialized"
         }
@@ -378,14 +305,12 @@ async def health_check_reverted():
 
 # Delete documents endpoint
 @app.delete("/api/documents")
-@limiter.limit("5/minute")
 async def delete_all_documents(
     request: Request,
     api_key: str = Depends(get_api_key),
-    current_vector_store: VectorStoreManager = Depends(get_vector_store),
-    current_redis_client: Optional[AsyncRedis] = Depends(get_redis_client)
+    current_vector_store: VectorStoreManager = Depends(get_vector_store)
 ):
-    """Delete the current vector store contents and clear relevant Redis cache."""
+    """Delete the current vector store contents."""
     try:
         # Clear vector store
         # The get_vector_store dependency already ensures vector_store is initialized if API key is valid
@@ -403,24 +328,8 @@ async def delete_all_documents(
             logger.warning("Vector store might not have been cleared as expected.")
             # Still proceed to clear cache and frontend state if desired
 
-        # Clear Redis cache (example: keys prefixed with "chat_rag:")
-        if current_redis_client:
-            try:
-                # Delete all keys matching the pattern "chat_rag:*"
-                # In a real app, be careful with `keys *` patterns in production on large Redis instances.
-                # A more targeted approach or Redis SCAN might be better.
-                keys_to_delete = await current_redis_client.keys("chat_rag:*")
-                if keys_to_delete:
-                    await current_redis_client.delete(*keys_to_delete)
-                    logger.info(f"Cleared {len(keys_to_delete)} RAG cache entries from Redis.")
-                else:
-                    logger.info("No RAG cache entries found in Redis to clear.")
-            except Exception as e:
-                logger.error(f"Error clearing Redis cache: {e}")
-                # Decide if this should be a fatal error for the endpoint
-
-        logger.info(f"Documents and cache cleared for API key associated with: {api_key[:5]}...")
-        return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "Documents and associated cache cleared successfully."})
+        logger.info(f"Documents cleared for API key associated with: {api_key[:5]}...")
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "Documents cleared successfully."})
 
     except Exception as e:
         logger.error(f"Error deleting documents: {e}", exc_info=True)
