@@ -309,6 +309,15 @@ async def health_check_reverted():
         }
     }
 
+# Simple root health check for App Runner (no auth required)
+@app.get("/")
+async def root():
+    return {
+        "status": "healthy",
+        "service": "Banker Wingman API",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
 # Delete documents endpoint
 @app.delete("/api/documents")
 async def delete_all_documents(
