@@ -4,12 +4,10 @@ build:
   commands:
     build:
       - python3 -m pip install -r api/requirements.txt
+      - chmod +x start.sh
 run:
   runtime-version: 3.11
-  pre-run:
-    - echo "Starting Banker Wingman API"
-    - ls -la /app/api/
-  command: python3 -m uvicorn api.app:app --host 0.0.0.0 --port 8000
+  command: ./start.sh
   network:
     port: 8000
   env:
