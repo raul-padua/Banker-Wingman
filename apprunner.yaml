@@ -6,4 +6,9 @@ build:
       - python3 -m pip install fastapi uvicorn
 run:
   runtime-version: 3.11
-  command: python3 run_server.py 
+  command: python3 run_server.py
+  env:
+    - name: PYTHONUNBUFFERED
+      value: "1"
+    - name: OPENAI_API_KEY # Preserving existing env var
+      value: "your-default-api-key" 
