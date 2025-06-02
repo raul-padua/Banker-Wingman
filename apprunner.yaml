@@ -7,7 +7,7 @@ build:
       - chmod +x start.sh
 run:
   runtime-version: 3.11
-  command: ./start.sh
+  command: python3 minimal_test.py
   env:
     - name: OPENAI_API_KEY
       value: "your-default-api-key"
