@@ -3,13 +3,7 @@ runtime: python311
 build:
   commands:
     build:
-      - python3 -m pip install -r api/requirements.txt
-      - chmod +x start.sh
+      - pip install fastapi uvicorn
 run:
   runtime-version: 3.11
-  command: python3 minimal_test.py
-  env:
-    - name: OPENAI_API_KEY
-      value: "your-default-api-key"
-    - name: PYTHONPATH
-      value: "/app" 
+  command: uvicorn minimal_test:app --host 0.0.0.0 --port 8080 
